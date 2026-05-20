@@ -78,8 +78,6 @@ services:
   frontend:
     build:
       context: ./frontend
-      args:
-        VITE_API_URL: http://localhost:3000/api
     ports:
       - "80:80"
     networks:
@@ -159,6 +157,17 @@ services:
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
+    networks:
+      - public_net
+    restart: unless-stopped
+
+  # ── Cloudflare Quick Tunnel (public HTTPS URL — no account needed) ─────────
+  # Run: docker compose logs cloudflared   →  look for "trycloudflare.com" URL
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --url http://frontend:80
+    depends_on:
+      - frontend
     networks:
       - public_net
     restart: unless-stopped

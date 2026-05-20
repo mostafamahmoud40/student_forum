@@ -16,5 +16,5 @@ COPY src ./src
 # Generate Prisma client with Alpine binary
 RUN npm run db:generate
 
-# Start: push schema to DB then serve
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node --import tsx/esm src/index.ts"]
+# Start API process only (schema sync handled by seed job)
+CMD ["node", "--import", "tsx/esm", "src/index.ts"]

@@ -102,6 +102,67 @@ services:
       - backend_net
     restart: "no"
 
+  # ── Monitoring: container metrics ─────────────────────────────────────────
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    privileged: true
+    ports:
+      - "8081:8080"
+    command:
+      - '--containerd=/run/containerd/containerd.sock'
+      - '--containerd-namespace=moby'
+      - '--docker_only=false'
+      - '--housekeeping_interval=10s'
+      - '--disable_metrics=disk,diskIO,hugetlb,referenced_memory,resctrl,cpuset,advtcp,cpu_topology,sched'
+      - '--store_container_labels=true'
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
+      - /sys:/sys:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    networks:
+      - public_net
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    depends_on:
+      - cadvisor
+    networks:
+      - public_net
+      - backend_net
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    ports:
+      - "3030:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/studenthub-monitoring.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - public_net
+    restart: unless-stopped
+
 # ── Networks ─────────────────────────────────────────────────────────────────
 networks:
   public_net:
@@ -113,4 +174,8 @@ networks:
 # ── Volumes ──────────────────────────────────────────────────────────────────
 volumes:
   postgres_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
     driver: local

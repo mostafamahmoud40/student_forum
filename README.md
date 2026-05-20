@@ -12,6 +12,9 @@ docker compose up --build -d
 |---------|-----|
 | Frontend | http://localhost |
 | API (load balancer) | http://localhost:3000/api |
+| **Monitoring dashboard (Grafana)** | http://localhost:3030 |
+| cAdvisor (raw container UI) | http://localhost:8081 |
+| Prometheus | http://localhost:9090 |
 
 ## Demo accounts
 
@@ -29,6 +32,27 @@ docker compose up --build -d
 - **seed** — one-shot Prisma seed job
 
 Networks: `public_net` (frontend, lb) and `backend_net` (internal — db, APIs).
+
+## Monitoring dashboard (live demo)
+
+Open **Grafana** during the demo: http://localhost:3030  
+- Login (optional): `admin` / `admin` — or use anonymous view  
+- Dashboard: **StudentHub Live Monitoring** (auto-loaded, refreshes every 5s)
+
+Shows:
+- **Container metrics** (CPU, memory, network) per Docker cgroup via cAdvisor — panels group by `id` (Docker cgroup path) because Compose service labels are not always exported on cgroup v2.
+- **DB memory** uses the container `image` label matching `postgres`.
+- **Application metrics** from `api-1` and `api-2` (HTTP req/s, process CPU/RAM via Prometheus)
+
+If container panels show **No data**, restart Grafana after `docker compose up -d` so the updated dashboard JSON is re-provisioned: `docker compose restart grafana`.
+
+Generate traffic while watching the dashboard:
+
+```bash
+for i in {1..30}; do curl -s http://localhost/api/health > /dev/null; done
+```
+
+Stack: `cadvisor` → `prometheus` → `grafana` (see `monitoring/`).
 
 ## Load balancing demo
 

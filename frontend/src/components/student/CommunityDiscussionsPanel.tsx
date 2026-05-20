@@ -14,8 +14,12 @@ export default function CommunityDiscussionsPanel({ communityId, communityTitle,
   const [threadList, setThreadList] = useState<Thread[]>([])
   const [activeThread, setActiveThread] = useState<ThreadDetail | null>(null)
   const [replyText, setReplyText] = useState('')
+  const [newTitle, setNewTitle] = useState('')
+  const [newContent, setNewContent] = useState('')
+  const [showCreateModal, setShowCreateModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [posting, setPosting] = useState(false)
+  const [creatingThread, setCreatingThread] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -68,6 +72,27 @@ export default function CommunityDiscussionsPanel({ communityId, communityTitle,
       alert(err instanceof Error ? err.message : 'Failed to post reply')
     } finally {
       setPosting(false)
+    }
+  }
+
+  const handleCreateThread = async () => {
+    if (!newTitle.trim() || !newContent.trim()) return
+    setCreatingThread(true)
+    try {
+      const { thread } = await threadsApi.create({
+        title: newTitle.trim(),
+        content: newContent.trim(),
+        category: communityTitle,
+        communityId,
+      })
+      setThreadList((prev) => [thread, ...prev])
+      setNewTitle('')
+      setNewContent('')
+      setShowCreateModal(false)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to create discussion')
+    } finally {
+      setCreatingThread(false)
     }
   }
 
@@ -183,6 +208,66 @@ export default function CommunityDiscussionsPanel({ communityId, communityTitle,
           </button>
         )}
       </div>
+
+      {isJoined && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-1.5 bg-primary text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-blue-600 transition cursor-pointer"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            New Discussion
+          </button>
+        </div>
+      )}
+
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-[1px] p-4">
+          <div className="w-full max-w-xl bg-white rounded-2xl border border-slate-200 shadow-xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-black text-slate-900">Start a new discussion</h3>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="text-xs font-bold text-slate-500 hover:text-slate-700 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+
+            <input
+              type="text"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="Discussion title..."
+              className="w-full text-sm text-slate-800 placeholder-slate-400 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white transition"
+            />
+            <textarea
+              value={newContent}
+              onChange={(e) => setNewContent(e.target.value)}
+              placeholder="Write your discussion..."
+              rows={5}
+              className="w-full resize-none text-sm text-slate-800 placeholder-slate-400 bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white transition"
+            />
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateThread}
+                disabled={!newTitle.trim() || !newContent.trim() || creatingThread}
+                className="flex items-center gap-1.5 bg-primary text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-blue-600 transition disabled:opacity-40 cursor-pointer"
+              >
+                {creatingThread ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                Post Discussion
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {threadList.length === 0 ? (
         <div className="bg-white rounded-3xl border border-slate-200/80 p-10 text-center text-slate-400 font-semibold">

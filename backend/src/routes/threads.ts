@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import { PrismaClient } from '@prisma/client'
+import { Prisma, PrismaClient } from '@prisma/client'
 import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
@@ -193,10 +193,20 @@ router.post('/:id/comments', requireAuth, async (req: Request, res: Response): P
   const user = await prisma.user.findUnique({ where: { id: req.user!.userId } })
   if (user?.isBanned) { res.status(403).json({ error: 'Your account is banned from posting' }); return }
 
-  const comment = await prisma.comment.create({
-    data: { threadId, authorId: req.user!.userId, content: content.trim() },
-    include: { author: { select: { id: true, name: true } } },
-  })
+  let comment
+  try {
+    comment = await prisma.comment.create({
+      data: { threadId, authorId: req.user!.userId, content: content.trim() },
+      include: { author: { select: { id: true, name: true } } },
+    })
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      res.status(409).json({ error: 'Failed to create comment due to ID conflict. Please retry.' })
+      return
+    }
+    res.status(500).json({ error: 'Failed to create comment' })
+    return
+  }
 
   await prisma.community.updateMany({
     where: { id: thread.communityId ?? -1 },

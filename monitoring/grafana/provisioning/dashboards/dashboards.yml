@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: StudentHub
+    orgId: 1
+    folder: StudentHub
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

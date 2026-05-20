@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # Per-container CPU, memory, network (Docker)
+  - job_name: cadvisor
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # Application metrics from API replicas (prom-client)
+  - job_name: api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['api-1:4000', 'api-2:4000']
+        labels:
+          app: studenthub

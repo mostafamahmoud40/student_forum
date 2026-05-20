@@ -304,6 +304,24 @@ async function main() {
     await prisma.flaggedPost.create({ data: f }).catch(() => {})
   }
 
+  // Keep Postgres sequences aligned after explicit IDs in seed data.
+  // Without this, inserts may try to reuse existing IDs and fail with P2002.
+  await prisma.$executeRawUnsafe(
+    `SELECT setval(pg_get_serial_sequence('"User"', 'id'), COALESCE((SELECT MAX(id) FROM "User"), 1), true);`
+  )
+  await prisma.$executeRawUnsafe(
+    `SELECT setval(pg_get_serial_sequence('"Community"', 'id'), COALESCE((SELECT MAX(id) FROM "Community"), 1), true);`
+  )
+  await prisma.$executeRawUnsafe(
+    `SELECT setval(pg_get_serial_sequence('"Thread"', 'id'), COALESCE((SELECT MAX(id) FROM "Thread"), 1), true);`
+  )
+  await prisma.$executeRawUnsafe(
+    `SELECT setval(pg_get_serial_sequence('"Comment"', 'id'), COALESCE((SELECT MAX(id) FROM "Comment"), 1), true);`
+  )
+  await prisma.$executeRawUnsafe(
+    `SELECT setval(pg_get_serial_sequence('"FlaggedPost"', 'id'), COALESCE((SELECT MAX(id) FROM "FlaggedPost"), 1), true);`
+  )
+
   console.log('Seeding complete.')
 }
 

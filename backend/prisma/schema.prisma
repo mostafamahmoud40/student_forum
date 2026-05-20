@@ -1,0 +1,119 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String
+  major        String?
+  role         String   @default("student") // student | admin
+  status       String   @default("Active")  // Active | Restricted | Pending
+  isBanned     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  threads     Thread[]
+  comments    Comment[]
+  memberships CommunityMember[]
+  threadLikes ThreadLike[]
+  commentLikes CommentLike[]
+}
+
+model Community {
+  id                Int      @id @default(autoincrement())
+  title             String
+  tag               String   @default("Public")
+  imageUrl          String
+  avatarUrl         String?
+  description       String
+  creator           String
+  membersCount      Int      @default(0)
+  discussionsCount  Int      @default(0)
+  interactionsCount Int      @default(0)
+  createdAt         DateTime @default(now())
+
+  members CommunityMember[]
+  threads Thread[]
+}
+
+model CommunityMember {
+  userId      Int
+  communityId Int
+  joinedAt    DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@id([userId, communityId])
+}
+
+model Thread {
+  id          Int      @id @default(autoincrement())
+  title       String
+  content     String
+  authorId    Int
+  communityId Int?
+  category    String
+  likes       Int      @default(0)
+  views       Int      @default(0)
+  isLocked    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  author      User         @relation(fields: [authorId], references: [id])
+  community   Community?   @relation(fields: [communityId], references: [id])
+  comments    Comment[]
+  flaggedPosts FlaggedPost[]
+  threadLikes ThreadLike[]
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  threadId  Int
+  authorId  Int
+  content   String
+  likes     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  thread       Thread        @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author       User          @relation(fields: [authorId], references: [id])
+  commentLikes CommentLike[]
+}
+
+model FlaggedPost {
+  id        Int      @id @default(autoincrement())
+  threadId  Int
+  author    String
+  reason    String
+  severity  String   // High | Medium | Low
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+}
+
+model ThreadLike {
+  userId   Int
+  threadId Int
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@id([userId, threadId])
+}
+
+model CommentLike {
+  userId    Int
+  commentId Int
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@id([userId, commentId])
+}
